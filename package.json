@@ -1,0 +1,49 @@
+{
+  "name": "photos-v2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "deploy": "node ./scripts/deploy.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@jtwebb/eslint-plugin": "^1.0.0",
+    "@types/yargs": "^17.0.7",
+    "eslint": "^8.3.0",
+    "prettier": "^2.4.1"
+  },
+  "dependencies": {
+    "@vscode/sqlite3": "^5.0.7",
+    "dotenv": "^10.0.0",
+    "exiftool-vendored": "^15.6.0",
+    "hasha": "^5.2.2",
+    "heic-convert": "^1.2.4",
+    "install": "^0.13.0",
+    "mysql": "^2.18.1",
+    "mysql2": "^2.3.3",
+    "npm": "^8.1.4",
+    "yargs": "^17.2.1"
+  },
+  "prettier": {
+    "arrowParens": "always",
+    "bracketSpacing": true,
+    "endOfLine": "lf",
+    "printWidth": 120,
+    "quoteProps": "as-needed",
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "none",
+    "useTabs": false
+  },
+  "eslintConfig": {
+    "extends": [
+      "plugin:@jtwebb/node"
+    ]
+  }
+}
