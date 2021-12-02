@@ -20,8 +20,5 @@ module.exports = function convertHeicFileIfFileNotExists(file) {
           return exiftool.write(outputPath, { FileModifyDate: exifData.FileModifyDate });
         });
     })
-    .catch((e) => {
-      log.error(e);
-      process.exit(1);
-    });
+    .catch(log.errorWithExit);
 };

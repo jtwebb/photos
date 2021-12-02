@@ -40,6 +40,7 @@ exports.handler = async ({ truncate, createTable }) => {
   const files = fs.readdirSync(originalDir, 'utf8')
     .map((f) => path.join(originalDir, f));
   const filesCount = files.length;
+  const logFileCount = log.countFiles(filesCount);
   let filesProcessed = 0;
 
   const chunks = [];
@@ -62,11 +63,7 @@ exports.handler = async ({ truncate, createTable }) => {
       }
 
       if (processed) {
-        filesProcessed++;
-
-        process.stdout.clearLine();
-        process.stdout.cursorTo(0);
-        process.stdout.write(`${filesProcessed} files of ${filesCount} processed.`);
+        logFileCount(filesProcessed++);
       }
     });
 
@@ -89,10 +86,7 @@ exports.handler = async ({ truncate, createTable }) => {
           log.info('Finished!');
           process.exit(0);
         })
-        .catch((e) => {
-          log.error(e);
-          process.exit(1);
-        });
+        .catch(log.errorWithExit);
     }
   });
 };

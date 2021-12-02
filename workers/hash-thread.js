@@ -8,5 +8,6 @@ process.on('message', async (file) => {
     process.exit(0);
   } catch (e) {
     log.error(file, e);
+    process.exit(1);
   }
 });

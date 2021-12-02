@@ -11,17 +11,30 @@ exports.aliases = [];
 exports.describe = 'Hash file contents to be able to find duplicates';
 
 exports.builder = (argv) => {
-  return argv;
+  return argv
+    .option('force', {
+      alias: 'f',
+      desc: 'Force update of all columns instead of columns missing hashes',
+      type: 'boolean',
+      default: false
+    });
 };
 
-exports.handler = async () => {
+exports.handler = async ({ force }) => {
   let filesProcessed = 0;
-  const [rows] = await query('select `sourceFile` from `exifs` where `hash` is not null');
-  let alreadyProcessed = (rows || []).map((r) => r.sourceFile);
+  let alreadyProcessed = [];
+
+  if (!force) {
+    const [rows] = await query('select `sourceFile` from `exifs` where `hash` is not null');
+    alreadyProcessed = (rows || []).map((r) => r.sourceFile);
+  }
+
   const files = fs.readdirSync(originalDir, { encoding: 'utf8', withFileTypes: true })
     .filter((f) => !f.isDirectory() && !alreadyProcessed.includes(path.join(originalDir, f.name)))
     .map((f) => path.join(originalDir, f.name));
+
   const filesCount = files.length;
+  const logFileCount = log.countFiles(filesCount);
   alreadyProcessed = null;
 
   log.info(`Starting to process ${filesCount} files...`);
@@ -37,11 +50,7 @@ exports.handler = async () => {
 
     worker.on('message', async ([hash, file]) => {
       await query('update `exifs` set `hash` = ? where `sourceFile` = ?', [hash, file]);
-      filesProcessed++;
-
-      process.stdout.clearLine();
-      process.stdout.cursorTo(0);
-      process.stdout.write(`${filesProcessed} files of ${filesCount} processed.`);
+      logFileCount(filesProcessed++);
     });
 
     worker.on('error', (error) => {

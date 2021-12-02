@@ -9,7 +9,7 @@ function getPool() {
       password: '123456',
       host: 'localhost',
       multipleStatements: true,
-      connectionLimit: 20,
+      connectionLimit: 50,
       queueLimit: 0
     });
   }
@@ -19,7 +19,8 @@ function getPool() {
 
 function query(sql, args = []) {
   return new Promise((resolve, reject) => {
-    getPool().query(sql, args, (error, results, fields) => {
+    const db = getPool();
+    db.query(sql, args, (error, results, fields) => {
       if (error) {
         return reject(error);
       }

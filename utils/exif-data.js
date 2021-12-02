@@ -5,8 +5,9 @@ module.exports = async function getExifData(file) {
   return exiftool
     .read(file)
     .then((data) => {
-      // noinspection JSValidateTypess - ExifDateTime
+      const { year, month, day } = data.FileModifyDate;
       data.CreateDate = data.CreateDate || { year: null, month: null, day: null };
+      data.ModifyDate = data.ModifyDate || { year, month, day };
 
       return {
         sourceFile: data.SourceFile,
@@ -17,16 +18,13 @@ module.exports = async function getExifData(file) {
         mimeType: data.MIMEType,
         fileName: data.FileName,
         fileSize: data.FileSize,
-        modifiedYear: data.FileModifyDate.year,
-        modifiedMonth: data.FileModifyDate.month,
-        modifiedDay: data.FileModifyDate.day,
+        modifiedYear: data.ModifyDate.year,
+        modifiedMonth: data.ModifyDate.month,
+        modifiedDay: data.ModifyDate.day,
         createdYear: data.CreateDate.year,
         createdMonth: data.CreateDate.month,
         createdDay: data.CreateDate.day
       };
     })
-    .catch((e) => {
-      log.error(e);
-      process.exit(1);
-    });
+    .catch(log.errorWithExit);
 };

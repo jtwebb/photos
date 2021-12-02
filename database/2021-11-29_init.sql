@@ -11,7 +11,7 @@ CREATE TABLE `exifs` (
   `fileTypeExtension` varchar(255) DEFAULT NULL,
   `mimeType` varchar(255) DEFAULT NULL,
   `fileName` varchar(255) DEFAULT NULL,
-  `newFileName` varchar(255) DEFAULT NULL,
+  `outputFile` varchar(255) DEFAULT NULL,
   `fileSize` varchar(255) DEFAULT NULL,
   `modifiedYear` varchar(255) DEFAULT NULL,
   `modifiedMonth` varchar(255) DEFAULT NULL,
@@ -20,11 +20,13 @@ CREATE TABLE `exifs` (
   `createdMonth` varchar(255) DEFAULT NULL,
   `createdDay` varchar(255) DEFAULT NULL,
   `hash` varchar(255) DEFAULT NULL,
-  `isDuplicate` tinyint(1) NOT NULL DEFAULT '0',
+  `pHash` varchar(255) DEFAULT NULL,
+  `isDuplicate` tinyint(1) NOT NULL DEFAULT '1',
   `hasMoved` tinyint(1) NOT NULL DEFAULT '0',
   `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   KEY `hash_index` (`sourceFile`, `hash`) USING BTREE
+  KEY `pHash_index` (`sourceFile`,`pHash`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 COMMIT;
