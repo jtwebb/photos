@@ -1,10 +1,12 @@
 const fs = require('fs');
 const path = require('path');
+const { Op } = require('sequelize');
+const Piscina = require('piscina');
 const log = require('../utils/log');
 const { originalDir } = require('../config');
 const { getDb } = require('../utils/db');
-const Piscina = require('piscina');
-const { Op } = require('sequelize');
+const msToTime = require('../utils/to-time');
+const dedupe = require('../utils/dedupe');
 
 exports.command = 'init';
 exports.aliases = [];
@@ -33,7 +35,8 @@ exports.builder = (argv) => {
 };
 
 exports.handler = async ({ truncate, fullFileHash, includePHash }) => {
-  const { models: { PhotoDetails } } = await getDb();
+  const start = Number(process.hrtime.bigint());
+  const { db, models: { PhotoDetails } } = await getDb();
 
   if (truncate) {
     await PhotoDetails.destroy({ truncate: true });
@@ -45,7 +48,7 @@ exports.handler = async ({ truncate, fullFileHash, includePHash }) => {
   }))
     .map((r) => r.sourcePath);
 
-  let filesProcessed = 1;
+  let filesProcessed = 0;
   let files = fs.readdirSync(originalDir, 'utf8')
     .map((f) => path.join(originalDir, f))
     .filter((f) => !alreadyProcessed.includes(f));
@@ -68,9 +71,18 @@ exports.handler = async ({ truncate, fullFileHash, includePHash }) => {
       filesCount += newFiles.length;
     }
 
-    log.sameLine(filesProcessed++, filesCount);
+    filesProcessed++;
+    const end = Number(process.hrtime.bigint()) / 1e+6 - start / 1e+6;
+    const average = end / filesProcessed;
+    const timeLeft = (filesCount - filesProcessed) * average;
+    const timeText = `Time: ${msToTime(end)}. Average: ${msToTime(average)}. Time Left: ${msToTime(timeLeft)}`;
+
+    log.sameLine(filesProcessed, filesCount, timeText);
 
     if (!files.length) {
+      log.info('\nDe-duping...');
+      const markedAsDupes = await dedupe({ db, PhotoDetails });
+      log.info(`${markedAsDupes} image(s) marked as duplicates`);
       log.info('Finished!');
       process.exit(0);
     }

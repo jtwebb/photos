@@ -11,12 +11,6 @@ exports.describe = 'Compare the images perceptual hashes that were collected in 
 
 exports.builder = (argv) => {
   return argv
-    .option('year', {
-      alias: 'y',
-      desc: 'The year to compare (comparing all images to all other images is far too much)',
-      type: 'string',
-      demandOption: true
-    })
     .option('threshold', {
       alias: 't',
       desc: 'The threshold for comparing images (a number between 0 and 1 with zero being a perfect match)',
@@ -25,27 +19,27 @@ exports.builder = (argv) => {
     });
 };
 
-exports.handler = async ({ year, threshold }) => {
+exports.handler = async ({ threshold }) => {
   const { models: { PhotoDetails } } = await getDb();
 
   const results = (await PhotoDetails.findAll({
     where: {
-      [Op.and]: {
-        hasPHashBeenCompared: false,
-        year,
-        isDuplicate: false,
-        fileTypeExtension: {
-          [Op.in]: pHashSupportedTypes.map((ext) => ext.slice(1))
+      [Op.and]: [
+        { hasPHashBeenCompared: false },
+        { isDuplicate: false },
+        { hasPHashBeenCompared: false },
+        {
+          fileTypeExtension: {
+            [Op.in]: pHashSupportedTypes.map((ext) => ext.slice(1))
+          }
         }
-      }
+      ]
     }
   }))
     .map((r) => r.dataValues);
 
   const filesCount = results.length;
   let filesProcessed = 0;
-  const comparisonsCount = filesCount * (filesCount - 1) / 2;
-  let comparisonsProcessed = 0;
 
   if (!filesCount) {
     log.info('Finished!');
@@ -58,12 +52,7 @@ exports.handler = async ({ year, threshold }) => {
     const data = results.shift();
     await pool.run({ data, results, threshold });
 
-    log.sameLine(
-      ++filesProcessed,
-      filesCount,
-      // eslint-disable-next-line max-len
-      getComparisonMessage(++comparisonsProcessed, comparisonsCount)
-    );
+    log.sameLine(++filesProcessed, filesCount);
 
     if (!results.length) {
       log.info('\nFinished!');
@@ -71,13 +60,3 @@ exports.handler = async ({ year, threshold }) => {
     }
   }
 };
-
-function getComparisonMessage(comparisonsProcessed, comparisonsCount) {
-  comparisonsProcessed = comparisonsProcessed * (comparisonsProcessed - 1) / 2;
-  const percent = comparisonsProcessed / comparisonsCount * 100;
-
-  return [
-    `${comparisonsProcessed.toLocaleString()} comparisons of ${comparisonsCount.toLocaleString()} processed.`,
-    `${percent.toFixed(2)}%`
-  ].join(' ');
-}

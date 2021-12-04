@@ -1,18 +1,6 @@
 const { Op } = require('sequelize');
-const { getDb } = require('../utils/db');
-const log = require('../utils/log');
 
-exports.command = 'dedupe';
-exports.aliases = [];
-exports.describe = 'Marks images as duplicates in the database';
-
-exports.builder = (argv) => {
-  return argv;
-};
-
-exports.handler = async () => {
-  const { db, models: { PhotoDetails } } = await getDb();
-
+module.exports = async function dedupe({ db, PhotoDetails }) {
   // Find everything that has a duplicated hash
   const results = await PhotoDetails.findAll({
     where: {
@@ -42,7 +30,5 @@ exports.handler = async () => {
     }
   }
 
-  log.info(`${markedAsDupes} image(s) marked as duplicates`);
-  log.info('\nFinished!');
-  process.exit(0);
+  return markedAsDupes;
 };
