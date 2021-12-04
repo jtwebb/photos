@@ -1,21 +1,12 @@
 const path = require('path');
 const { outputDir, rawExt, videoExt } = require('../config');
 
-module.exports = function getOutputFile(exifData) {
-  const { fileName, modifiedYear, modifiedMonth, modifiedDay, createdYear, createdMonth, createdDay } = exifData;
+module.exports = function getOutputFile(exifData = {}) {
+  // eslint-disable-next-line prefer-const
+  let { sourceFilename, year, month, day } = exifData;
 
-  let year = modifiedYear;
-  let month = modifiedMonth;
-  let day = modifiedDay;
-
-  if (createdYear !== null && createdYear < year) {
-    year = createdYear;
-    month = createdMonth;
-    day = createdDay;
-  }
-
-  let outputFile = fileName.toLowerCase();
-  const dateMatch = outputFile.match(/^(\d{4}-\d{2}-\d{2})/);
+  let outputFilename = sourceFilename.toLowerCase();
+  const dateMatch = outputFilename.match(/^(\d{4}-\d{2}-\d{2})/);
   if (dateMatch) {
     const parts = dateMatch[1].split('-');
     year = parts[0];
@@ -23,24 +14,24 @@ module.exports = function getOutputFile(exifData) {
     day = parts[2];
   }
 
-  if (year !== null && !/^\d{4}-\d{2}-\d{2}/.test(outputFile)) {
-    outputFile = `${year}-${month}-${day}_${outputFile}`;
+  if (year !== null && !/^\d{4}-\d{2}-\d{2}/.test(outputFilename)) {
+    outputFilename = `${year}-${month}-${day}_${outputFilename}`;
   }
 
   let newDir = path.join(outputDir, `${year}`);
-  const ext = path.extname(outputFile);
+  const ext = path.extname(outputFilename);
 
   if (['.ai', '.psd'].includes(ext)) {
-    newDir = path.join(outputDir, ext.slice(1));
+    newDir = path.join(newDir, ext.slice(1));
   }
 
-  if (videoExt.has(ext)) {
+  if (videoExt.includes(ext)) {
     newDir = path.join(newDir, 'videos');
   }
 
-  if (rawExt.has(ext)) {
+  if (rawExt.includes(ext)) {
     newDir = path.join(newDir, 'raw');
   }
 
-  return path.join(newDir, outputFile);
+  return { outputPath: path.join(newDir, outputFilename), outputFilename };
 };

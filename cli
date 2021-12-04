@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+
+require('dotenv').config();
+
+const yargs = require('yargs');
+const packageJson = require('./package.json');
+
+yargs(process.argv.slice(2))
+  .commandDir('./commands')
+  .help()
+  .version(packageJson.version)
+  .alias('help', 'h')
+  .alias('version', 'v')
+  .usage('$0 <command>')
+  .demandCommand(1, 'You need at least one command before moving on')
+  .parserConfiguration({
+    'deep-merge-config': false,
+    'strip-aliased': true,
+    'sort-commands': true,
+    'strip-dashed': true
+  })
+  .recommendCommands()
+  .showHelpOnFail(false, 'Specify --help for available options')
+  .argv;

@@ -3,4 +3,6 @@ var
 .env
 .env.*
 !.env.example
-samples
+.samples
+.dist
+!/cli

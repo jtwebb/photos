@@ -1,122 +1,53 @@
 const path = require('path');
+const log = require('./utils/log');
+
+const imageExt = ['.bmp', '.gif', '.jpeg', '.jpg', '.png', '.tiff', '.tif', '.heic', '.ai', '.psd'];
+const rawExt = ['.cr2', '.cr3', '.nef', '.arw', '.dng', '.xmp'];
+const videoExt = ['.mov', '.mp4', '.mpg', '.3gp', '.avi'];
+const zipExt = ['.zip'];
+const allowedExts = [
+  ...imageExt,
+  ...rawExt,
+  ...videoExt,
+  ...zipExt
+];
+const exceptions = ['wp_E_20130501.pdf'].map((f) => f.toLowerCase());
+
+const dbOptions = (process.env.DB_OPTIONS || '')
+  .split(',')
+  .filter(Boolean)
+  .reduce((acc, current) => {
+    const [key, value] = current.split(':');
+    acc[key] = value;
+    return acc;
+  }, {});
 
 module.exports = {
   originalDir: process.env.ORIGINAL_DIR,
-  duplicatesDir: path.join(process.env.ORIGINAL_DIR, 'duplicates'),
   outputDir: process.env.OUTPUT_DIR,
-  psdDir: process.env.PSD_DIR,
-  aiDir: process.env.AI_DIR,
-  deployDir: process.env.DEPLOY_DIR,
   varDir: path.resolve(__dirname, 'var'),
-  allowedExts: allowedExts(),
-  imageExt: new Set(['.bmp', '.gif', '.jpeg', '.jpg', '.png', '.tiff', '.tif', '.pdf', '.heic', '.ai', '.psd']),
-  rawExt: new Set(['.cr2', '.cr3', '.nef', '.arw', '.dng', '.xmp']),
-  videoExt: new Set(['.mov', '.mp4', '.mpg', '.3gp', '.avi']),
-  jimpSupportedTypes: ['jpg', 'jpeg', 'png', 'bmp', 'tif', 'tiff', 'gif'],
-  pdfNames: getPdfNames(),
-  dbPath: path.resolve(__dirname, './database/photos.db'),
-  originalDriveName: process.env.ORIGINAL_DRIVE_NAME,
-  outputDriveName: process.env.OUTPUT_DRIVE_NAME
+  workerDir: path.resolve(__dirname, 'workers'),
+  allowedExts,
+  imageExt,
+  rawExt,
+  videoExt,
+  zipExt,
+  pHashSupportedTypes: ['.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.gif'],
+  exceptions,
+  dbConfig: {
+    user: process.env.DB_USER,
+    database: process.env.DB_NAME,
+    password: process.env.DB_PASS,
+    storage: process.env.DB_STORAGE,
+    options: {
+      dialect: process.env.DB_DIALECT || 'mysql',
+      logging: process.env.DB_LOGGING !== 'false' ? log.sql : false,
+      multipleStatements: true,
+      pool: {
+        max: 50,
+        min: 0
+      },
+      ...dbOptions
+    }
+  }
 };
-
-function allowedExts() {
-  return [
-    '.3gp',
-    '.ai',
-    '.arw',
-    '.avi',
-    '.bmp',
-    '.cr2',
-    '.dng',
-    '.gif',
-    '.heic',
-    '.jpeg',
-    '.jpg',
-    '.mov',
-    '.mp4',
-    '.mpg',
-    '.nef',
-    '.png',
-    '.psd',
-    '.tif',
-    '.xmp',
-    '.zip'
-  ];
-}
-
-function getPdfNames() {
-  return [
-    'Asian Girl - Portrait.pdf',
-    'Asian Girl - Portrait2.pdf',
-    'Barrel Racing - Graphite.pdf',
-    'Barrel Racing - Graphite2.pdf',
-    'Bassett Hound Puppy - Graphite.pdf',
-    'Bassett Hound Puppy - Graphite2.pdf',
-    'Coca Cola Bottle - Colored Pencil.pdf',
-    'Coca Cola Bottle - Colored Pencil2.pdf',
-    'Cougar Cub - Colored Pencil.pdf',
-    'Cougar Cub - Colored Pencil2.pdf',
-    'Girl - Portrait.pdf',
-    'Girl - Portrait2.pdf',
-    'Horse Portrait - Graphite.pdf',
-    'Horse Portrait - Graphite2.pdf',
-    'Horse Race - Charcoal.pdf',
-    'Horse Race - Charcoal2.pdf',
-    'Island Woman - Portrait.pdf',
-    'Island Woman - Portrait2.pdf',
-    'Lab Puppies - Colored Pencil.pdf',
-    'Lab Puppies - Colored Pencil2.pdf',
-    'Labrador Retriever - Graphite.pdf',
-    'Labrador Retriever - Graphite2.pdf',
-    'Lora Beth - Portrait.pdf',
-    'Lora Beth - Portrait2.pdf',
-    'Mare & Foal - Colored Pencil.pdf',
-    'Mare & Foal - Colored Pencil2.pdf',
-    'Mare & Foal - Graphite.pdf',
-    'Mare & Foal - Graphite2.pdf',
-    'Newborn - Graphite.pdf',
-    'Newborn - Graphite2.pdf',
-    'Older Woman - Portrait.pdf',
-    'Older Woman - Portrait2.pdf',
-    'Rachel - Photo.pdf',
-    'Rachel - Photo2.pdf',
-    'Rachel - Portrait.pdf',
-    'Rachel - Portrait2.pdf',
-    'Smiling Girl - Charcoal.pdf',
-    'Smiling Girl - Charcoal2.pdf',
-    'South American Woman - Portrait.pdf',
-    'South American Woman - Portrait2.pdf',
-    'Tabby Cat - Graphite.pdf',
-    'Tabby Cat - Graphite2.pdf',
-    'West Highland Terrier - Graphite.pdf',
-    'West Highland Terrier - Graphite2.pdf',
-    'Wolf - Charcoal.pdf',
-    'Wolf - Charcoal2.pdf',
-    'Zebras - Colored Pencil on Black.pdf',
-    'Zebras - Colored Pencil on Black2.pdf',
-    'Asian Girl - Portrait (2).pdf',
-    'Barrel Racing - Graphite (2).pdf',
-    'Bassett Hound Puppy - Graphite (2).pdf',
-    'Coca Cola Bottle - Colored Pencil (2).pdf',
-    'Cougar Cub - Colored Pencil (2).pdf',
-    'Girl - Portrait (2).pdf',
-    'Horse Portrait - Graphite (2).pdf',
-    'Horse Race - Charcoal (2).pdf',
-    'Island Woman - Portrait (2).pdf',
-    'Lab Puppies - Colored Pencil (2).pdf',
-    'Labrador Retriever - Graphite (2).pdf',
-    'Lora Beth - Portrait (2).pdf',
-    'Mare & Foal - Colored Pencil (2).pdf',
-    'Mare & Foal - Graphite (2).pdf',
-    'Newborn - Graphite (2).pdf',
-    'Older Woman - Portrait (2).pdf',
-    'Rachel - Photo (2).pdf',
-    'Rachel - Portrait (2).pdf',
-    'Smiling Girl - Charcoal (2).pdf',
-    'South American Woman - Portrait (2).pdf',
-    'Tabby Cat - Graphite (2).pdf',
-    'West Highland Terrier - Graphite (2).pdf',
-    'Wolf - Charcoal (2).pdf',
-    'Zebras - Colored Pencil on Black (2).pdf'
-  ];
-}

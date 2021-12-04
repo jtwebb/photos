@@ -1,97 +1,78 @@
 const fs = require('fs');
 const path = require('path');
-const cluster = require('cluster');
-const numCPUs = require('os').cpus().length * 3;
 const log = require('../utils/log');
 const { originalDir } = require('../config');
-const { query } = require('../database/db');
-const { exiftool } = require('exiftool-vendored');
+const { getDb } = require('../utils/db');
+const Piscina = require('piscina');
+const { Op } = require('sequelize');
 
 exports.command = 'init';
 exports.aliases = [];
-// eslint-disable-next-line max-len
-exports.describe = 'Start here after the manual work of moving all files into one directory, unzipping all zipped files, rotating images';
+exports.describe = 'Start here after syncing the database `cli sync`';
 
 exports.builder = (argv) => {
   return argv
     .option('truncate', {
       alias: 't',
-      desc: 'Truncate the exifs table before starting',
+      desc: 'Truncate the photoDetails table before starting',
       type: 'boolean',
       default: false
     })
-    .option('create-table', {
-      alias: 'c',
-      desc: 'Create the exifs table if it does not exist',
+    .option('full-file-hash', {
+      alias: 'h',
+      desc: 'Hash the entire file instead of just the first and last 512 bytes',
+      type: 'boolean',
+      default: false
+    })
+    .option('include-pHash', {
+      alias: 'p',
+      desc: 'Include perceptual hashes to compare similar images',
       type: 'boolean',
       default: false
     });
 };
 
-exports.handler = async ({ truncate, createTable }) => {
-  if (createTable) {
-    await createDbExifTableIfNotExists();
-  }
+exports.handler = async ({ truncate, fullFileHash, includePHash }) => {
+  const { models: { PhotoDetails } } = await getDb();
 
   if (truncate) {
-    await query('truncate `exifs`');
+    await PhotoDetails.destroy({ truncate: true });
   }
 
-  const files = fs.readdirSync(originalDir, 'utf8')
-    .map((f) => path.join(originalDir, f));
-  const filesCount = files.length;
-  const logFileCount = log.countFiles(filesCount);
-  let filesProcessed = 0;
+  const alreadyProcessed = (await PhotoDetails.findAll({
+    where: { hash: { [Op.not]: null } },
+    attributes: ['sourcePath']
+  }))
+    .map((r) => r.sourcePath);
 
-  const chunks = [];
-  for (let i = 0; i < filesCount; i += 400) {
-    chunks.push(files.slice(i, i + 400));
-  }
+  let filesProcessed = 1;
+  let files = fs.readdirSync(originalDir, 'utf8')
+    .map((f) => path.join(originalDir, f))
+    .filter((f) => !alreadyProcessed.includes(f));
+  let filesCount = files.length;
+  const pool = new Piscina({ filename: path.resolve(__dirname, '../workers/init-thread.js') });
 
-  cluster.setupPrimary({ exec: path.resolve(__dirname, '../workers/init-thread.js') });
+  while (files.length) {
+    const file = files.shift();
+    const { heicOutputPath, newDir } = await pool.run({ file, fullFileHash, includePHash });
 
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-
-  cluster.on('fork', (worker) => {
-    const chunk = chunks.shift();
-
-    worker.on('message', async ({ heicOutputPath, processed }) => {
-      if (heicOutputPath) {
-        files.push(heicOutputPath);
-      }
-
-      if (processed) {
-        logFileCount(filesProcessed++);
-      }
-    });
-
-    worker.on('error', (error) => {
-      log.error(error);
-      process.exit(1);
-    });
-
-    worker.send(chunk || false);
-  });
-
-  cluster.on('exit', () => {
-    if (chunks.length) {
-      cluster.fork();
+    if (heicOutputPath) {
+      files.push(heicOutputPath);
     }
 
-    if (Object.keys(cluster.workers).length === 0) {
-      exiftool.end()
-        .then(() => {
-          log.info('Finished!');
-          process.exit(0);
-        })
-        .catch(log.errorWithExit);
+    if (newDir) {
+      const newFiles = fs.readdirSync(newDir, 'utf8')
+        .map((f) => path.join(newDir, f))
+        .filter((f) => !alreadyProcessed.includes(f));
+      files = [...files, ...newFiles];
+      filesCount += newFiles.length;
     }
-  });
+
+    log.sameLine(filesProcessed++, filesCount);
+
+    if (!files.length) {
+      log.info('Finished!');
+      process.exit(0);
+    }
+  }
 };
-
-async function createDbExifTableIfNotExists() {
-  const sql = fs.readFileSync(path.resolve(__dirname, '../database/2021-11-29_init.sql'), 'utf8');
-  await query(sql);
-}
