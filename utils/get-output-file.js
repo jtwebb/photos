@@ -14,6 +14,8 @@ module.exports = function getOutputFile(exifData = {}) {
     day = parts[2];
   }
 
+  outputFilename = outputFilename.replace(/[$!~{}']/g, '');
+
   if (year !== null && !/^\d{4}-\d{2}-\d{2}/.test(outputFilename)) {
     outputFilename = `${year}-${month}-${day}_${outputFilename}`;
   }

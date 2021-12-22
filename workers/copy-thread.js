@@ -1,8 +1,9 @@
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const { parentPort } = require('worker_threads');
 const { getDb } = require('../utils/db');
 
-module.exports = async function copyThread({ id, sourcePath, outputPath, isSimilar }) {
+parentPort.on('message', async function copyThread({ id, sourcePath, outputPath, isSimilar }) {
   const outputDir = path.dirname(outputPath);
 
   if (isSimilar) {
@@ -17,10 +18,10 @@ module.exports = async function copyThread({ id, sourcePath, outputPath, isSimil
   return fs.promises.copyFile(sourcePath, outputPath)
     .then(() => {
       PhotoDetails.update({ hasMoved: true }, { where: { id } });
-      return { success: true, sourcePath, outputPath };
+      return parentPort.postMessage({ success: true, sourcePath, outputPath, finished: true });
     })
-    .catch((e) => {
+    .catch(e => {
       console.log(e);
-      return { success: false, sourcePath, outputPath };
+      return parentPort.postMessage({ success: false, sourcePath, outputPath, finished: true });
     });
-};
+});

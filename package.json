@@ -5,7 +5,9 @@
   "main": "index.js",
   "private": true,
   "type": "commonjs",
-  "scripts": {},
+  "scripts": {
+    "profile:init": "NODE_ENV=production node --prof cli init -t -h -p"
+  },
   "keywords": [],
   "author": "",
   "license": "MIT",
@@ -21,7 +23,6 @@
     "exiftool-vendored": "^15.6.0",
     "heic-convert": "^1.2.4",
     "mysql2": "^2.3.3",
-    "piscina": "^3.1.0",
     "sequelize": "^6.12.0-alpha.1",
     "sharp": "^0.29.3",
     "sharp-phash": "^2.0.0",
@@ -29,7 +30,7 @@
     "yargs": "^17.2.1"
   },
   "prettier": {
-    "arrowParens": "always",
+    "arrowParens": "avoid",
     "bracketSpacing": true,
     "endOfLine": "lf",
     "printWidth": 120,

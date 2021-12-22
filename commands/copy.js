@@ -1,11 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const { getDb } = require('../utils/db');
+const { getAllToCopy } = require('../utils/db');
 const { Op } = require('sequelize');
 const log = require('../utils/log');
-const Piscina = require('piscina');
 const { outputDir } = require('../config');
 const { mkdirSync } = require('sharp/lib/libvips');
+const WorkerPool = require('../utils/worker-pool');
+const os = require('os');
 
 exports.command = 'copy';
 exports.aliases = [];
@@ -20,41 +21,50 @@ exports.handler = async () => {
     mkdirSync(outputDir, { recursive: true });
   }
 
-  const { models: { PhotoDetails } } = await getDb();
+  const photoDetails = (await getAllToCopy()).map(r => r.dataValues);
 
-  const results = (await PhotoDetails.findAll({
-    where: {
-      [Op.and]: [
-        { isDuplicate: false },
-        { hasMoved: false }
-      ]
-    }
-  })).map((r) => r.dataValues);
+  const logger = setupTrackers(photoDetails.length);
 
-  const filesCount = results.length;
-  let filesProcessed = 0;
-  let filesFailed = 0;
-
-  if (!filesCount) {
+  if (!photoDetails.length) {
     log.info('Finished!');
     process.exit(0);
   }
 
-  const pool = new Piscina({ filename: path.resolve(__dirname, '../workers/copy-thread.js') });
+  const pool = new WorkerPool(os.cpus().length, path.join(process.cwd(), 'workers/copy-thread.js'));
+  const promises = [];
 
-  while (results.length) {
-    const data = results.shift();
-    const { success } = await pool.run(data);
+  while (photoDetails.length) {
+    const data = photoDetails.shift();
+    const promise = new Promise((resolve, reject) => {
+      pool.runTask(data, (error, results) => {
+        if (error) {
+          return reject(error);
+        }
 
+        logger(results);
+
+        resolve();
+      });
+    });
+
+    promises.push(promise);
+  }
+
+  await Promise.all(promises);
+
+  log.info('\nFinished!');
+  process.exit(0);
+};
+
+function setupTrackers(filesCount) {
+  let filesProcessed = 0;
+  let filesFailed = 0;
+
+  return ({ success }) => {
     if (!success) {
       filesFailed++;
     }
 
     log.sameLine(++filesProcessed, filesCount, `${filesFailed} file(s) have failed.`);
-
-    if (!results.length) {
-      log.info('\nFinished!');
-      process.exit(0);
-    }
-  }
-};
+  };
+}

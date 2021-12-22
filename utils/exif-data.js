@@ -1,5 +1,7 @@
 const { exiftool } = require('exiftool-vendored');
 const log = require('../utils/log');
+const { getDb } = require('../utils/db');
+const recordError = require('../utils/record-error');
 
 module.exports = async function getExifData(file) {
   try {
@@ -25,6 +27,7 @@ module.exports = async function getExifData(file) {
       day
     };
   } catch (e) {
+    await recordError(file, e);
     log.error(e);
   }
 };

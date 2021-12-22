@@ -1,12 +1,12 @@
-const fs = require('fs');
 const path = require('path');
-const { Op } = require('sequelize');
-const Piscina = require('piscina');
+const os = require('os');
 const log = require('../utils/log');
+const readDir = require('../utils/read-dir');
 const { originalDir } = require('../config');
-const { getDb } = require('../utils/db');
+const { getDb, getAlreadyProcessed } = require('../utils/db');
 const msToTime = require('../utils/to-time');
-const dedupe = require('../utils/dedupe');
+const markDuplicates = require('../utils/mark-duplicates');
+const WorkerPool = require('../utils/worker-pool');
 
 exports.command = 'init';
 exports.aliases = [];
@@ -42,49 +42,81 @@ exports.handler = async ({ truncate, fullFileHash, includePHash }) => {
     await PhotoDetails.destroy({ truncate: true });
   }
 
-  const alreadyProcessed = (await PhotoDetails.findAll({
-    where: { hash: { [Op.not]: null } },
-    attributes: ['sourcePath']
-  }))
-    .map((r) => r.sourcePath);
+  const alreadyProcessed = (await getAlreadyProcessed()).map(r => r.sourcePath);
+  const contents = readDir(originalDir, f => !alreadyProcessed.includes(f));
 
+  const logger = setupTrackers(start, contents.length);
+
+  const pool = new WorkerPool(os.cpus().length, path.join(process.cwd(), 'workers/init-thread.js'));
+
+  await taskRunner({ pool, contents, logger, fullFileHash, includePHash, alreadyProcessed });
+
+  log.info('\nDe-duping. This may take a minute...');
+  const count = await markDuplicates(db, PhotoDetails);
+
+  log.info(`${count} image(s) marked as duplicates`);
+  log.info('Finished!');
+  process.exit(0);
+};
+
+function taskRunner(args) {
+  const { pool, logger, fullFileHash, includePHash, alreadyProcessed } = args;
+  let contents = args.contents;
+  const promises = [];
+
+  while (contents.length) {
+    const file = contents.shift();
+    const promise = new Promise(resolve => {
+      pool.runTask({ file, fullFileHash, includePHash }, (error, result) => {
+        if (error) {
+          log.error(file, error);
+          return resolve(error);
+        }
+
+        const { heicOutputPath, newDir } = result;
+
+        if (heicOutputPath) {
+          contents.push(heicOutputPath);
+        }
+
+        logger({ processed: true });
+
+        if (newDir) {
+          const newFiles = readDir(newDir, f => !alreadyProcessed.includes(f));
+
+          contents = [...contents, ...newFiles];
+          logger({ newFilesCount: newFiles.length });
+
+          return resolve(taskRunner({ ...args, contents }));
+        }
+
+        resolve();
+      });
+    });
+
+    promises.push(promise);
+  }
+
+  return Promise.all(promises);
+}
+
+function setupTrackers(start, filesCount) {
   let filesProcessed = 0;
-  let files = fs.readdirSync(originalDir, 'utf8')
-    .map((f) => path.join(originalDir, f))
-    .filter((f) => !alreadyProcessed.includes(f));
-  let filesCount = files.length;
-  const pool = new Piscina({ filename: path.resolve(__dirname, '../workers/init-thread.js') });
 
-  while (files.length) {
-    const file = files.shift();
-    const { heicOutputPath, newDir } = await pool.run({ file, fullFileHash, includePHash });
-
-    if (heicOutputPath) {
-      files.push(heicOutputPath);
+  return ({ processed, newFilesCount }) => {
+    if (processed) {
+      ++filesProcessed;
     }
 
-    if (newDir) {
-      const newFiles = fs.readdirSync(newDir, 'utf8')
-        .map((f) => path.join(newDir, f))
-        .filter((f) => !alreadyProcessed.includes(f));
-      files = [...files, ...newFiles];
-      filesCount += newFiles.length;
+    if (newFilesCount) {
+      filesCount += newFilesCount;
     }
 
-    filesProcessed++;
     const end = Number(process.hrtime.bigint()) / 1e+6 - start / 1e+6;
     const average = end / filesProcessed;
     const timeLeft = (filesCount - filesProcessed) * average;
     const timeText = `Time: ${msToTime(end)}. Average: ${msToTime(average)}. Time Left: ${msToTime(timeLeft)}`;
 
     log.sameLine(filesProcessed, filesCount, timeText);
-
-    if (!files.length) {
-      log.info('\nDe-duping...');
-      const markedAsDupes = await dedupe({ db, PhotoDetails });
-      log.info(`${markedAsDupes} image(s) marked as duplicates`);
-      log.info('Finished!');
-      process.exit(0);
-    }
-  }
-};
+  };
+}

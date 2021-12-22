@@ -11,7 +11,7 @@ const allowedExts = [
   ...videoExt,
   ...zipExt
 ];
-const exceptions = ['wp_E_20130501.pdf'].map((f) => f.toLowerCase());
+const exceptions = ['wp_E_20130501.pdf'].map(f => f.toLowerCase());
 
 const dbOptions = (process.env.DB_OPTIONS || '')
   .split(',')
@@ -27,6 +27,7 @@ module.exports = {
   outputDir: process.env.OUTPUT_DIR,
   varDir: path.resolve(__dirname, 'var'),
   workerDir: path.resolve(__dirname, 'workers'),
+  deployDir: process.env.DEPLOY_DIR,
   allowedExts,
   imageExt,
   rawExt,

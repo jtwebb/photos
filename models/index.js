@@ -1,11 +1,11 @@
 const photoDetails = require('./photo-detail');
-const badImages = require('./bad-image');
+const errorReport = require('./error-report');
 const comparisons = require('./comparison');
 
 async function setupModels(db) {
   return {
     PhotoDetails: photoDetails(db),
-    BadImages: badImages(db),
+    ErrorReports: errorReport(db),
     Comparisons: comparisons(db)
   };
 }

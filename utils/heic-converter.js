@@ -2,6 +2,7 @@ const fs = require('fs');
 const { exiftool } = require('exiftool-vendored');
 const heicConverter = require('heic-convert');
 const log = require('../utils/log');
+const recordError = require('../utils/record-error');
 
 module.exports = async function convertHeicFileIfFileNotExists(file) {
   try {
@@ -19,6 +20,7 @@ module.exports = async function convertHeicFileIfFileNotExists(file) {
 
     return exiftool.write(outputPath, { FileModifyDate: exifData.FileModifyDate });
   } catch (e) {
+    await recordError(file, e);
     log.error(e);
   }
 };

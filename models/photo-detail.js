@@ -72,6 +72,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: false
     },
+    isSimilar: {
+      type: DT.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    },
     hash: {
       type: DT.STRING
     },
@@ -94,11 +99,91 @@ module.exports = (sequelize) => {
         ]
       },
       {
+        name: 'hash_index',
+        using: 'BTREE',
+        fields: [
+          'hash'
+        ]
+      },
+      {
         name: 'pHash_sourcePath_index',
         using: 'BTREE',
         fields: [
           'outputPath',
-          'hash'
+          'pHash'
+        ]
+      },
+      {
+        name: 'id_sourceFilename_year_index',
+        using: 'BTREE',
+        fields: [
+          'id',
+          'sourceFilename',
+          'year'
+        ]
+      },
+      {
+        name: 'hash_sourceFilename_index',
+        using: 'BTREE',
+        fields: [
+          'hash',
+          'sourceFilename'
+        ]
+      },
+      {
+        name: 'pHash_index',
+        using: 'BTREE',
+        fields: [
+          'pHash'
+        ]
+      },
+      {
+        name: 'sourceFilename_index',
+        using: 'BTREE',
+        fields: [
+          'sourceFilename'
+        ]
+      },
+      {
+        name: 'isDuplicate_index',
+        using: 'BTREE',
+        fields: [
+          'isDuplicate'
+        ]
+      },
+      {
+        name: 'hasMoved_index',
+        using: 'BTREE',
+        fields: [
+          'hasMoved'
+        ]
+      },
+      {
+        name: 'isSimilar_index',
+        using: 'BTREE',
+        fields: [
+          'isSimilar'
+        ]
+      },
+      {
+        name: 'hasPHashBeenCompared_index',
+        using: 'BTREE',
+        fields: [
+          'hasPHashBeenCompared'
+        ]
+      },
+      {
+        name: 'hasHashBeenCompared_index',
+        using: 'BTREE',
+        fields: [
+          'hasHashBeenCompared'
+        ]
+      },
+      {
+        name: 'year_index',
+        using: 'BTREE',
+        fields: [
+          'year'
         ]
       }
     ]

@@ -26,6 +26,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 0
     },
+    difference: {
+      type: DT.FLOAT,
+      allowNull: false,
+      defaultValue: 0
+    },
     isSimilar: {
       type: DT.BOOLEAN,
       allowNull: false,
